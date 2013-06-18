@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.fedoraproject.devassistant.mechanishm
+Exec=/home/phracek/work/devassistant/devassistant-mechanishm.py
+User=root
