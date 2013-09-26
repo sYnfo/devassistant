@@ -13,6 +13,7 @@ from devassistant import loaded_yaml
 from devassistant import yaml_loader
 from devassistant import yaml_snippet_loader
 from devassistant import package_managers
+from devassistant.yaml_evaluate import evaluate
 
 def needs_fully_loaded(method):
     """Wraps all publicly callable methods of YamlAssistant. If the assistant was loaded
@@ -300,7 +301,7 @@ class YamlAssistant(assistant_base.AssistantBase, loaded_yaml.LoadedYaml):
                         logger.error(e)
                         raise e
                     try:
-                        eval_expression = self._evaluate()
+                        eval_expression = evaluate()
                     except exceptions.YamlSyntaxError as e:
                         logger.log(e)
                         raise e
@@ -370,7 +371,7 @@ class YamlAssistant(assistant_base.AssistantBase, loaded_yaml.LoadedYaml):
         """
         # check if else section is really else
         skip = True if else_section is not None and else_section[0] == 'else' else False
-        if self._evaluate(if_section[0][2:].strip(), **kwargs)[0]:
+        if evaluate(if_section[0][2:].strip(), kwargs)[0]:
             return (0, skip, if_section[1])
         else:
             return (1, skip, else_section[1]) if skip else (1, skip, None)
@@ -450,7 +451,7 @@ class YamlAssistant(assistant_base.AssistantBase, loaded_yaml.LoadedYaml):
             comm: either another variable or command to run
         """
         var_name = self._get_var_name(variable)
-        kwargs[var_name] = self._evaluate(comm, **kwargs)[1]
+        kwargs[var_name] = evaluate(comm, kwargs)[1]
 
     def _get_var_name(self, dolar_variable):
         name = dolar_variable.strip()
@@ -459,50 +460,6 @@ class YamlAssistant(assistant_base.AssistantBase, loaded_yaml.LoadedYaml):
             raise exceptions.YamlSyntaxError('Not a proper variable name: ' + dolar_variable)
         name = name[1:] # strip the dollar
         return name.strip('{}')
-
-    def _evaluate(self, expression, **kwargs):
-        """Evaluates given expression - can be one of
-        - $foo
-        - "$foo"
-        - $(cl command)
-
-        Returns:
-            tuple (success, value), where
-            - success means whether variable was found or cl command returned zero
-            - value is the evaluated value :)
-
-        Raises:
-            exceptions.YamlSyntaxError if expression is malformed
-        """
-        # was command successful?
-        success = True
-        # command output
-        output = ''
-        invert_success = False
-        expr = expression.strip()
-        if expr.startswith('not '):
-            invert_success = True
-            expr = expr[4:]
-
-        if expr.startswith('$('): # only one expression: "$(expression)"
-            try:
-                output = run_command('cl_n', CommandFormatter.format('cl', expr[2:-1], self.template_dir, self._files, **kwargs), **kwargs)
-            except exceptions.RunException as ex:
-                success = False
-                output = ex.output
-        elif expr.startswith('$') or expr.startswith('"$'):
-            var_name = self._get_var_name(expr)
-            if var_name in kwargs and kwargs[var_name]:
-                success = True
-                output = kwargs[var_name]
-            else:
-                success = False
-        elif expr.startswith('defined '):
-            success = self._get_var_name(expr[8:]) in kwargs
-        else:
-            raise exceptions.YamlSyntaxError('Not a valid expression: ' + expression)
-
-        return (success if not invert_success else not success, output)
 
     @needs_fully_loaded
     def stop(self):
