@@ -363,11 +363,39 @@ Syntax and semantics:
 
   - regardless of *logical result*, *result* always contains both stdout
     and stderr lines in the order they were printed by ``commandline command``
-- ``not`` - negates the *logical result* of an expression, while leaving
-  *result* intact, can only be used once (no, you can't use
-  ``not not not $foo``, sorry)
-- ``defined $foo`` - works exactly as ``$foo``, but has *logical result*
+
+- ``defined $foo`` works exactly as ``$foo``, but has *logical result*
   ``True`` even if the value is empty or ``False``
+
+- ``not $foo`` negates the *logical result* of an expression, while leaving
+  *result* intact
+
+- ``$foo and $bar``
+
+  - *logical result* is logical conjunction of the two arguments
+
+  - *result* is either empty string if one of the arguments is empty string or the latter argument
+
+- ``$foo or $bar``
+
+  - *logical result* is logical disjunction of the two arguments
+
+  - *result* is the first non-empty argument or an empty string
+
+- ``literals - "foo"``
+
+  - *logical result* ``True`` for non-empty strings, ``False`` otherwise
+    
+  - *result* is the string itself, sans quotes
+
+- ``$foo in $bar``
+
+  - *logical result* is ``True`` if the second argument contains the first, e. g. "inus" in "Linus Torvalds", and ``False`` otherwise
+
+  - *result* is always the first argument
+
+All these can of course be chained together, so for instance ``"1.8.1.4" in $(git --version) and defined $git`` is also a valid expression.
+
 
 Quoting
 ~~~~~~~
