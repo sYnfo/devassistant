@@ -1,112 +1,114 @@
-import pytest
-from devassistant.yaml_evaluate import evaluate
+import os
+import re
+from devassistant.yaml_evaluate import evaluate_expression
 
-# XXX Also test for things that should fail
 
 class TestEvaluate(object):
-    def setup_method(self, method):
+    def setup_class(self):
         self.names = {"true": True,
-                 "false": False,
-                 "nonempty": "foo",
-                 "nonempty2": "bar",
-                 "empty": ""}
+                      "false": False,
+                      "nonempty": "foo",
+                      "nonempty2": "bar",
+                      "empty": ""}
+
+        # create directories for test_shell
+        os.mkdir(os.path.join(os.path.dirname(__file__), "foo"))
+        os.mkdir(os.path.join(os.path.dirname(__file__), "foo", "bar"))
+        os.chdir(os.path.dirname(__file__))
+
+    def teardown_class(self):
+        os.rmdir(os.path.join(os.path.dirname(__file__), "foo", "bar"))
+        os.rmdir(os.path.join(os.path.dirname(__file__), "foo"))
 
     def test_and(self):
         # XXX or should this be (True, "") or (True, "True")
-        assert evaluate("$true and $true", self.names) == (True, True)
-        assert evaluate("$true and $false", self.names) == (False, False)
-        assert evaluate("$false and $true", self.names) == (False, False)
-        assert evaluate("$false and $false", self.names) == (False, False)
+        assert evaluate_expression("$true and $true", self.names) == (True, "")
+        assert evaluate_expression("$true and $false", self.names) == (False, "")
+        assert evaluate_expression("$false and $true", self.names) == (False, "")
+        assert evaluate_expression("$false and $false", self.names) == (False, "")
 
-        assert evaluate("$nonempty and $nonempty2", self.names) == (True, "bar")
-        assert evaluate("$nonempty2 and $nonempty", self.names) == (True, "foo")
+        assert evaluate_expression("$nonempty and $nonempty2", self.names) == (True, "bar")
+        assert evaluate_expression("$nonempty2 and $nonempty", self.names) == (True, "foo")
 
-        assert evaluate("$nonempty and $empty", self.names) == (False, "")
-        assert evaluate("$empty and $nonempty", self.names) == (False, "")
+        assert evaluate_expression("$nonempty and $empty", self.names) == (False, "")
+        assert evaluate_expression("$empty and $nonempty", self.names) == (False, "")
 
-        assert evaluate("$nonempty and $true", self.names) == (True, True)
-        assert evaluate("$true and $nonempty", self.names) == (True, "foo")
+        assert evaluate_expression("$nonempty and $true", self.names) == (True, "")
+        assert evaluate_expression("$true and $nonempty", self.names) == (True, "")
 
-        assert evaluate("$empty and $true", self.names) == (False, "")
-        assert evaluate("$true and $empty", self.names) == (False, "")
+        assert evaluate_expression("$empty and $true", self.names) == (False, "")
+        assert evaluate_expression("$true and $empty", self.names) == (False, "")
 
-        assert evaluate("$empty and $empty", self.names) == (False, "")
+        assert evaluate_expression("$empty and $empty", self.names) == (False, "")
 
-        assert evaluate("$true and $nonempty and $nonempty2", self.names) == (True, "bar")
-        assert evaluate("$true and $nonempty and $empty", self.names) == (False, "")
+        assert evaluate_expression("$true and $nonempty and $nonempty2", self.names) == (True, "")
+        assert evaluate_expression("$true and $nonempty and $empty", self.names) == (False, "")
 
     def test_or(self):
-        assert evaluate("$true or $true", self.names) == (True, True)
-        assert evaluate("$true or $false", self.names) == (True, True)
-        assert evaluate("$false or $true", self.names) == (True, True)
-        assert evaluate("$false or $false", self.names) == (False, False)
+        assert evaluate_expression("$true or $true", self.names) == (True, "")
+        assert evaluate_expression("$true or $false", self.names) == (True, "")
+        assert evaluate_expression("$false or $true", self.names) == (True, "")
+        assert evaluate_expression("$false or $false", self.names) == (False, "")
 
-        assert evaluate("$nonempty or $nonempty2", self.names) == (True, "foo")
-        assert evaluate("$nonempty2 or $nonempty", self.names) == (True, "bar")
+        assert evaluate_expression("$nonempty or $nonempty2", self.names) == (True, "foo")
+        assert evaluate_expression("$nonempty2 or $nonempty", self.names) == (True, "bar")
 
-        assert evaluate("$nonempty or $empty", self.names) == (True, "foo")
-        assert evaluate("$empty or $nonempty", self.names) == (True, "foo")
+        assert evaluate_expression("$nonempty or $empty", self.names) == (True, "foo")
+        assert evaluate_expression("$empty or $nonempty", self.names) == (True, "foo")
 
-        assert evaluate("$nonempty or $true", self.names) == (True, "foo")
-        assert evaluate("$true or $nonempty", self.names) == (True, True)
+        assert evaluate_expression("$nonempty or $true", self.names) == (True, "foo")
+        assert evaluate_expression("$true or $nonempty", self.names) == (True, "foo")
 
-        assert evaluate("$empty or $true", self.names) == (True, True)
-        assert evaluate("$true or $empty", self.names) == (True, True)
+        assert evaluate_expression("$empty or $true", self.names) == (True, "")
+        assert evaluate_expression("$true or $empty", self.names) == (True, "")
 
-        assert evaluate("$empty or $empty", self.names) == (False, "")
+        assert evaluate_expression("$empty or $empty", self.names) == (False, "")
 
-        assert evaluate("$true or $nonempty or $nonempty2", self.names) == (True, True)
-        assert evaluate("$false or $nonempty or $empty", self.names) == (True, "foo")
+        assert evaluate_expression("$true or $nonempty or $nonempty2", self.names) == (True, "foo")
+        assert evaluate_expression("$false or $nonempty or $empty", self.names) == (True, "foo")
 
     def test_not(self):
-        assert evaluate("not $true", self.names) == (False, True)
-        assert evaluate("not $false", self.names) == (True, False)
-        assert evaluate("not $nonempty", self.names) == (False, "foo")
-        assert evaluate("not $empty", self.names) == (True, "")
+        assert evaluate_expression("not $true", self.names) == (False, "")
+        assert evaluate_expression("not $false", self.names) == (True, "")
+        assert evaluate_expression("not $nonempty", self.names) == (False, "foo")
+        assert evaluate_expression("not $empty", self.names) == (True, "")
 
     def test_in(self):
-        assert evaluate('$nonempty in "foobar"', self.names) == (True, "foo")
-        assert evaluate('$nonempty2 in "foobar"', self.names) == (True, "bar")
-        assert evaluate('$empty in "foobar"', self.names) == (True, "")
-        assert evaluate('$nonempty in "FOOBAR"', self.names) == (False, "foo")
+        assert evaluate_expression('$nonempty in "foobar"', self.names) == (True, "foo")
+        assert evaluate_expression('$nonempty2 in "foobar"', self.names) == (True, "bar")
+        assert evaluate_expression('$empty in "foobar"', self.names) == (True, "")
+        assert evaluate_expression('$nonempty in "FOOBAR"', self.names) == (False, "foo")
 
     def test_defined(self):
-        assert evaluate("defined $nonempty", self.names) == (True, "foo")
-        assert evaluate("defined $empty", self.names) == (True, "")
-        assert evaluate("defined $notdefined", self.names) == (False, "")
+        assert evaluate_expression("defined $nonempty", self.names) == (True, "foo")
+        assert evaluate_expression("defined $empty", self.names) == (True, "")
+        assert evaluate_expression("defined $notdefined", self.names) == (False, "")
 
     def test_variable(self):
-        assert evaluate("$true", self.names) == (True, True)
-        assert evaluate("$false", self.names) == (False, False)
-        assert evaluate("$nonempty", self.names) == (True, "foo")
-        assert evaluate("$empty", self.names) == (False, "")
+        assert evaluate_expression("$true", self.names) == (True, "")
+        assert evaluate_expression("$false", self.names) == (False, "")
+        assert evaluate_expression("$nonempty", self.names) == (True, "foo")
+        assert evaluate_expression("$empty", self.names) == (False, "")
 
     def test_shell(self):
-        # Also test for if it stays cd'd and if the return code is handled
-        # right
-        assert evaluate("$(echo foobar)", self.names) == (True, "foobar")
-        assert evaluate("$(test -d /thisshouldntexist)", self.names) == (False, '')
-        assert evaluate("$(false)", self.names) == (False, '')
-        assert evaluate("$(true)", self.names) == (True, '')
+        assert evaluate_expression("$(echo foobar)", self.names) == (True, "foobar")
+        assert evaluate_expression("$(test -d /thoushaltnotexist)", self.names) == (False, '')
+        assert evaluate_expression("$(false)", self.names) == (False, '')
+        assert evaluate_expression("$(true)", self.names) == (True, '')
+        assert re.match(".*/foo/bar$",
+                        evaluate_expression("$(cd foo; cd bar; pwd; cd ../..)",
+                                            self.names)[1])
 
     def test_literal(self):
-        assert evaluate('"foobar"', self.names) == (True, "foobar")
-        assert evaluate('""', self.names) == (False, "")
-
-    def test_parentheses(self):
-        pass
+        assert evaluate_expression('"foobar"', self.names) == (True, "foobar")
+        assert evaluate_expression('""', self.names) == (False, "")
 
     def test_variable_substitution(self):
-        assert evaluate('"$nonempty"', self.names) == (True, "foo")
-        assert evaluate('"$empty"', self.names) == (False, "")
-        # XXX Is this right? Shouldn't it evaluet to a different string?
-        assert evaluate('"$true"', self.names) == (True, "True")
+        assert evaluate_expression('"$nonempty"', self.names) == (True, "foo")
+        assert evaluate_expression('"$empty"', self.names) == (False, "")
+        assert evaluate_expression('"$true"', self.names) == (True, "True")
 
     def test_complex_expression(self):
-        #assert evaluate('defined $empty or $empty and \
-        #                 $(echo -e foo bar "and also baz") or "google"',
-        #               self.names) == (True, 'foo bar and also baz')
-        pass
-
-    def test_precedence(self):
-        pass
+        assert evaluate_expression('defined $empty or $empty and \
+                                    $(echo -e foo bar "and also baz") or "else $nonempty"',
+                                    self.names) == (True, 'else foo')
