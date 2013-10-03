@@ -13,7 +13,7 @@ from devassistant import loaded_yaml
 from devassistant import yaml_loader
 from devassistant import yaml_snippet_loader
 from devassistant import package_managers
-from devassistant.yaml_evaluate import evaluate
+from devassistant.yaml_evaluate import evaluate_expression
 
 def needs_fully_loaded(method):
     """Wraps all publicly callable methods of YamlAssistant. If the assistant was loaded
@@ -302,7 +302,7 @@ class YamlAssistant(assistant_base.AssistantBase, loaded_yaml.LoadedYaml):
                         logger.error(e)
                         raise e
                     try:
-                        eval_expression = evaluate()
+                        eval_expression = evaluate_expression()
                     except exceptions.YamlSyntaxError as e:
                         logger.log(e)
                         raise e
@@ -370,7 +370,7 @@ class YamlAssistant(assistant_base.AssistantBase, loaded_yaml.LoadedYaml):
         """
         # check if else section is really else
         skip = True if else_section is not None and else_section[0] == 'else' else False
-        if evaluate(if_section[0][2:].strip(), kwargs)[0]:
+        if evaluate_expression(if_section[0][2:].strip(), kwargs)[0]:
             return (0, skip, if_section[1])
         else:
             return (1, skip, else_section[1]) if skip else (1, skip, None)
@@ -452,7 +452,7 @@ class YamlAssistant(assistant_base.AssistantBase, loaded_yaml.LoadedYaml):
         if comma_count > 1:
             raise exceptions.YamlSyntaxError('Max two variables allowed on left side.')
 
-        res1, res2 = evaluate(comm, kwargs)
+        res1, res2 = evaluate_expression(comm, kwargs)
         if comma_count == 1:
             var1, var2 = map(lambda v: self._get_var_name(v), variable.split(','))
             kwargs[var1] = res1
